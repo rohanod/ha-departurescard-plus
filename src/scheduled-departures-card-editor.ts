@@ -99,6 +99,14 @@ export class ScheduledDeparturesCardEditor extends LitElement {
     this.emitConfig({ ...this.config, windows });
   }
 
+  public handleWindowFieldChanged(
+    index: number,
+    field: "from" | "to" | "title",
+    value: string,
+  ): void {
+    this.updateWindow(index, { [field]: value } as Partial<ScheduleWindowConfig>);
+  }
+
   public toggleDay(index: number, day: ScheduleDay): void {
     if (!this.config) {
       return;
@@ -154,6 +162,21 @@ export class ScheduledDeparturesCardEditor extends LitElement {
     });
   }
 
+  public handleEntityPicked(windowIndex: number, entityIndex: number, value: string): void {
+    this.updateEntity(windowIndex, entityIndex, { entity: value });
+  }
+
+  public handleEntityFieldChanged(
+    windowIndex: number,
+    entityIndex: number,
+    field: keyof DepartureEntityConfig,
+    value: string,
+  ): void {
+    this.updateEntity(windowIndex, entityIndex, {
+      [field]: nullableValue(value),
+    });
+  }
+
   public updateDeparturesCardYaml(value: string): void {
     if (!this.config) {
       return;
@@ -204,8 +227,12 @@ export class ScheduledDeparturesCardEditor extends LitElement {
           (windowConfig, windowIndex) => html`
             <section class="window">
               <div class="window-toolbar">
-                <strong>${windowConfig.title || `Window ${windowIndex + 1}`}</strong>
-                <span>
+                <div class="window-heading">
+                  <span class="eyebrow">Window ${windowIndex + 1}</span>
+                  <strong>${windowConfig.title || "Untitled schedule"}</strong>
+                  <small>${windowConfig.from}${windowConfig.to ? ` - ${windowConfig.to}` : " onward"}</small>
+                </div>
+                <span class="actions">
                   <button
                     type="button"
                     ?disabled=${windowIndex === 0}
@@ -227,41 +254,12 @@ export class ScheduledDeparturesCardEditor extends LitElement {
               </div>
 
               <div class="grid">
-                <label>
-                  From
-                  <input
-                    type="time"
-                    .value=${windowConfig.from}
-                    @change=${(event: Event) =>
-                      this.updateWindow(windowIndex, {
-                        from: (event.target as HTMLInputElement).value,
-                      })}
-                  />
-                </label>
-                <label>
-                  To
-                  <input
-                    type="time"
-                    .value=${windowConfig.to ?? ""}
-                    @change=${(event: Event) =>
-                      this.updateWindow(windowIndex, {
-                        to: (event.target as HTMLInputElement).value,
-                      })}
-                  />
-                </label>
-                <label>
-                  Title
-                  <input
-                    .value=${windowConfig.title}
-                    @change=${(event: Event) =>
-                      this.updateWindow(windowIndex, {
-                        title: (event.target as HTMLInputElement).value,
-                      })}
-                  />
-                </label>
+                ${this.renderWindowField(windowIndex, "from", "From", windowConfig.from, "time")}
+                ${this.renderWindowField(windowIndex, "to", "To", windowConfig.to ?? "", "time")}
+                ${this.renderWindowField(windowIndex, "title", "Title", windowConfig.title)}
               </div>
 
-              <fieldset>
+              <fieldset class="days">
                 <legend>Days</legend>
                 ${DAYS.map(
                   (day) => html`
@@ -287,8 +285,16 @@ export class ScheduledDeparturesCardEditor extends LitElement {
               ${windowConfig.entities.map(
                 (entityConfig, entityIndex) => html`
                   <div class="entity">
-                    ${this.renderEntityField(windowIndex, entityIndex, entityConfig, "entity")}
-                    ${this.renderEntityField(windowIndex, entityIndex, entityConfig, "lineColor")}
+                    <ha-entity-picker
+                      data-field="entity"
+                      label="Entity"
+                      .hass=${this.hass}
+                      .value=${entityConfig.entity}
+                      .allowCustomEntity=${true}
+                      @value-changed=${(event: CustomEvent<{ value?: string }>) =>
+                        this.handleEntityPicked(windowIndex, entityIndex, event.detail.value ?? "")}
+                    ></ha-entity-picker>
+                    ${this.renderLineColorField(windowIndex, entityIndex, entityConfig)}
                     ${this.renderEntityField(windowIndex, entityIndex, entityConfig, "lineName")}
                     ${this.renderEntityField(
                       windowIndex,
@@ -296,14 +302,10 @@ export class ScheduledDeparturesCardEditor extends LitElement {
                       entityConfig,
                       "destinationName",
                     )}
-                    ${this.renderEntityField(
-                      windowIndex,
-                      entityIndex,
-                      entityConfig,
-                      "destinationSource",
-                    )}
+                    ${this.renderDestinationSourceField(windowIndex, entityIndex, entityConfig)}
                     <button
                       type="button"
+                      class="delete-entity"
                       @click=${() => this.deleteEntity(windowIndex, entityIndex)}
                     >
                       Delete entity
@@ -318,6 +320,25 @@ export class ScheduledDeparturesCardEditor extends LitElement {
     `;
   }
 
+  private renderWindowField(
+    windowIndex: number,
+    field: "from" | "to" | "title",
+    label: string,
+    value: string,
+    type = "text",
+  ) {
+    return html`
+      <ha-textfield
+        data-field=${field}
+        label=${label}
+        type=${type}
+        .value=${value}
+        @change=${(event: Event) =>
+          this.handleWindowFieldChanged(windowIndex, field, eventValue(event))}
+      ></ha-textfield>
+    `;
+  }
+
   private renderEntityField(
     windowIndex: number,
     entityIndex: number,
@@ -325,17 +346,76 @@ export class ScheduledDeparturesCardEditor extends LitElement {
     field: keyof DepartureEntityConfig,
   ) {
     return html`
-      <label>
-        ${field}
-        <input
-          .value=${String(entityConfig[field] ?? "")}
+      <ha-textfield
+        label=${entityFieldLabel(field)}
+        .value=${String(entityConfig[field] ?? "")}
+        @change=${(event: Event) =>
+          this.handleEntityFieldChanged(windowIndex, entityIndex, field, eventValue(event))}
+        data-field=${String(field)}
+      ></ha-textfield>
+    `;
+  }
+
+  private renderLineColorField(
+    windowIndex: number,
+    entityIndex: number,
+    entityConfig: DepartureEntityConfig,
+  ) {
+    const lineColor = String(entityConfig.lineColor ?? "");
+
+    return html`
+      <div class="color-field">
+        <label>
+          <span>Line color</span>
+          <input
+            type="color"
+            .value=${validHexColor(lineColor) ? lineColor : "#000000"}
+            @input=${(event: Event) =>
+              this.handleEntityFieldChanged(windowIndex, entityIndex, "lineColor", eventValue(event))}
+          />
+        </label>
+        <ha-textfield
+          data-field="lineColor"
+          label="Hex"
+          .value=${lineColor}
           @change=${(event: Event) =>
-            this.updateEntity(windowIndex, entityIndex, {
-              [field]: nullableValue((event.target as HTMLInputElement).value),
-            })}
-          data-field=${String(field)}
-        />
-      </label>
+            this.handleEntityFieldChanged(windowIndex, entityIndex, "lineColor", eventValue(event))}
+        ></ha-textfield>
+      </div>
+    `;
+  }
+
+  private renderDestinationSourceField(
+    windowIndex: number,
+    entityIndex: number,
+    entityConfig: DepartureEntityConfig,
+  ) {
+    const value = String(entityConfig.destinationSource ?? "");
+
+    return html`
+      <ha-select
+        data-field="destinationSource"
+        label="Destination source"
+        .value=${value}
+        @selected=${(event: Event) =>
+          this.handleEntityFieldChanged(
+            windowIndex,
+            entityIndex,
+            "destinationSource",
+            eventValue(event),
+          )}
+        @change=${(event: Event) =>
+          this.handleEntityFieldChanged(
+            windowIndex,
+            entityIndex,
+            "destinationSource",
+            eventValue(event),
+          )}
+      >
+        ${destinationSourceOptions(value).map(
+          (option) => html`<mwc-list-item .value=${option}>${option || "Default"}</mwc-list-item>`,
+        )}
+      </ha-select>
     `;
   }
 
@@ -367,9 +447,16 @@ export class ScheduledDeparturesCardEditor extends LitElement {
     }
 
     input,
-    textarea {
+    textarea,
+    ha-textfield,
+    ha-entity-picker,
+    ha-select {
       box-sizing: border-box;
       width: 100%;
+    }
+
+    input,
+    textarea {
       border: 1px solid var(--divider-color, #d0d0d0);
       border-radius: 4px;
       background: var(--card-background-color, #fff);
@@ -406,6 +493,34 @@ export class ScheduledDeparturesCardEditor extends LitElement {
       justify-content: space-between;
     }
 
+    .window-heading {
+      display: grid;
+      gap: 2px;
+    }
+
+    .window-heading strong {
+      font-size: 1rem;
+    }
+
+    .window-heading small,
+    .eyebrow {
+      color: var(--secondary-text-color, #666);
+    }
+
+    .eyebrow {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+
     h3,
     h4 {
       margin: 0;
@@ -424,6 +539,38 @@ export class ScheduledDeparturesCardEditor extends LitElement {
       display: grid;
       gap: 10px;
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
+
+    .entity {
+      align-items: end;
+      border: 1px solid var(--divider-color, #d0d0d0);
+      border-radius: 6px;
+      padding: 10px;
+    }
+
+    .color-field {
+      align-items: end;
+      display: grid;
+      gap: 8px;
+      grid-template-columns: 52px minmax(100px, 1fr);
+    }
+
+    .color-field label {
+      gap: 4px;
+    }
+
+    .color-field span {
+      color: var(--secondary-text-color, #666);
+      font-size: 0.75rem;
+    }
+
+    input[type="color"] {
+      height: 40px;
+      padding: 2px;
+    }
+
+    .delete-entity {
+      min-height: 40px;
     }
 
     fieldset {
@@ -453,8 +600,43 @@ function cloneConfig(config: ScheduledDeparturesCardConfig): ScheduledDepartures
   return structuredClone(config);
 }
 
+function eventValue(event: Event): string {
+  const customEvent = event as CustomEvent<{ value?: string }>;
+  if (customEvent.detail?.value !== undefined) {
+    return customEvent.detail.value;
+  }
+
+  return (event.target as HTMLInputElement | HTMLSelectElement | null)?.value ?? "";
+}
+
 function nullableValue(value: string): string | null {
   return value === "" ? null : value;
+}
+
+function entityFieldLabel(field: keyof DepartureEntityConfig): string {
+  switch (field) {
+    case "lineName":
+      return "Line name";
+    case "destinationName":
+      return "Destination name";
+    case "destinationSource":
+      return "Destination source";
+    case "lineColor":
+      return "Line color";
+    case "entity":
+      return "Entity";
+    default:
+      return String(field);
+  }
+}
+
+function destinationSourceOptions(currentValue: string): string[] {
+  const options = ["", "direction"];
+  return currentValue && !options.includes(currentValue) ? [...options, currentValue] : options;
+}
+
+function validHexColor(value: string): boolean {
+  return /^#[0-9a-f]{6}$/i.test(value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

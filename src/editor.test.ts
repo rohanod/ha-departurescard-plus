@@ -116,9 +116,31 @@ describe("ScheduledDeparturesCardEditor", () => {
     expect(editor.shadowRoot?.querySelector("textarea")?.getAttribute("aria-label")).toBe(
       "departuresCard YAML",
     );
-    expect(editor.shadowRoot?.querySelector('input[type="time"]')).toBeTruthy();
+    expect(editor.shadowRoot?.querySelector('ha-textfield[data-field="from"]')).toBeTruthy();
+    expect(editor.shadowRoot?.querySelector('ha-textfield[data-field="title"]')).toBeTruthy();
     expect(editor.shadowRoot?.querySelector('input[type="checkbox"]')).toBeTruthy();
-    expect(editor.shadowRoot?.querySelector('input[data-field="entity"]')).toBeTruthy();
+    expect(editor.shadowRoot?.querySelector("ha-entity-picker")).toBeTruthy();
+    expect(editor.shadowRoot?.querySelector('input[type="color"]')).toBeTruthy();
     expect(editor.shadowRoot?.textContent).toContain("Schedule windows");
+  });
+
+  it("updates entity rows from Home Assistant picker and control events", () => {
+    const editor = document.createElement(
+      "scheduled-departures-card-editor",
+    ) as ScheduledDeparturesCardEditor;
+    const listener = vi.fn();
+    editor.setConfig(config);
+    editor.addEventListener("config-changed", listener);
+
+    editor.handleEntityPicked(0, 0, "sensor.bus_22");
+    expect(listener.mock.calls.at(-1)?.[0].detail.config.windows[0].entities[0].entity).toBe(
+      "sensor.bus_22",
+    );
+
+    editor.setConfig(listener.mock.calls.at(-1)?.[0].detail.config);
+    editor.handleEntityFieldChanged(0, 0, "destinationSource", "direction");
+    expect(
+      listener.mock.calls.at(-1)?.[0].detail.config.windows[0].entities[0].destinationSource,
+    ).toBe("direction");
   });
 });
