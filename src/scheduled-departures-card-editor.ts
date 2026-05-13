@@ -1,4 +1,4 @@
-import { LitElement, html, nothing } from "lit";
+import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { parse, stringify } from "yaml";
 import { DAYS } from "./schedule";
@@ -186,6 +186,7 @@ export class ScheduledDeparturesCardEditor extends LitElement {
         <label>
           Shared departures-card YAML
           <textarea
+            aria-label="departuresCard YAML"
             rows="12"
             .value=${stringify(this.config.departuresCard).trimEnd()}
             @change=${(event: Event) =>
@@ -332,6 +333,7 @@ export class ScheduledDeparturesCardEditor extends LitElement {
             this.updateEntity(windowIndex, entityIndex, {
               [field]: nullableValue((event.target as HTMLInputElement).value),
             })}
+          data-field=${String(field)}
         />
       </label>
     `;
@@ -347,6 +349,104 @@ export class ScheduledDeparturesCardEditor extends LitElement {
       }),
     );
   }
+
+  static styles = css`
+    :host {
+      display: block;
+    }
+
+    .editor {
+      display: grid;
+      gap: 16px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-weight: 500;
+    }
+
+    input,
+    textarea {
+      box-sizing: border-box;
+      width: 100%;
+      border: 1px solid var(--divider-color, #d0d0d0);
+      border-radius: 4px;
+      background: var(--card-background-color, #fff);
+      color: var(--primary-text-color, #111);
+      font: inherit;
+      padding: 8px;
+    }
+
+    textarea {
+      font-family: var(--code-font-family, monospace);
+      min-height: 180px;
+    }
+
+    button {
+      border: 1px solid var(--divider-color, #d0d0d0);
+      border-radius: 4px;
+      background: var(--secondary-background-color, #f4f4f4);
+      color: var(--primary-text-color, #111);
+      cursor: pointer;
+      font: inherit;
+      padding: 6px 10px;
+    }
+
+    button:disabled {
+      cursor: default;
+      opacity: 0.5;
+    }
+
+    .header,
+    .window-toolbar {
+      align-items: center;
+      display: flex;
+      gap: 8px;
+      justify-content: space-between;
+    }
+
+    h3,
+    h4 {
+      margin: 0;
+    }
+
+    .window {
+      border: 1px solid var(--divider-color, #d0d0d0);
+      border-radius: 8px;
+      display: grid;
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .grid,
+    .entity {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
+
+    fieldset {
+      border: 1px solid var(--divider-color, #d0d0d0);
+      border-radius: 6px;
+      margin: 0;
+      padding: 10px;
+    }
+
+    .day {
+      display: inline-flex;
+      gap: 4px;
+      margin: 4px 10px 4px 0;
+    }
+
+    .day input {
+      width: auto;
+    }
+
+    .error {
+      color: var(--error-color, #db4437);
+    }
+  `;
 }
 
 function cloneConfig(config: ScheduledDeparturesCardConfig): ScheduledDeparturesCardConfig {

@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import "./scheduled-departures-card-editor";
 import { buildDeparturesConfig, getActiveWindow, validateScheduledDeparturesConfig } from "./schedule";
 import type {
   HomeAssistant,
@@ -28,6 +29,29 @@ export class ScheduledDeparturesCard extends LitElement {
 
   private timerId?: number;
   private child?: DeparturesCardElement;
+
+  public static getConfigElement(): HTMLElement {
+    return document.createElement("scheduled-departures-card-editor");
+  }
+
+  public static getStubConfig(): ScheduledDeparturesCardConfig {
+    return {
+      type: "custom:scheduled-departures-card",
+      departuresCard: {},
+      windows: [
+        {
+          from: "08:00",
+          title: "New schedule",
+          entities: [
+            {
+              entity: "",
+              destinationSource: "direction",
+            },
+          ],
+        },
+      ],
+    };
+  }
 
   public setConfig(config: unknown): void {
     try {

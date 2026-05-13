@@ -103,4 +103,22 @@ describe("ScheduledDeparturesCardEditor", () => {
       theme: "nord",
     });
   });
+
+  it("renders only the departures-card passthrough as YAML and uses visual controls for schedule data", async () => {
+    const editor = document.createElement(
+      "scheduled-departures-card-editor",
+    ) as ScheduledDeparturesCardEditor;
+    editor.setConfig(config);
+    document.body.append(editor);
+    await editor.updateComplete;
+
+    expect(editor.shadowRoot?.querySelectorAll("textarea")).toHaveLength(1);
+    expect(editor.shadowRoot?.querySelector("textarea")?.getAttribute("aria-label")).toBe(
+      "departuresCard YAML",
+    );
+    expect(editor.shadowRoot?.querySelector('input[type="time"]')).toBeTruthy();
+    expect(editor.shadowRoot?.querySelector('input[type="checkbox"]')).toBeTruthy();
+    expect(editor.shadowRoot?.querySelector('input[data-field="entity"]')).toBeTruthy();
+    expect(editor.shadowRoot?.textContent).toContain("Schedule windows");
+  });
 });

@@ -1,7 +1,6 @@
 import { html, LitElement } from "lit";
 import { beforeEach, vi } from "vitest";
-import "./scheduled-departures-card";
-import type { ScheduledDeparturesCard } from "./scheduled-departures-card";
+import { ScheduledDeparturesCard } from "./scheduled-departures-card";
 
 class FakeDeparturesCard extends LitElement {
   public hass: unknown;
@@ -132,5 +131,11 @@ describe("ScheduledDeparturesCard", () => {
     await card.updateComplete;
 
     expect(card.shadowRoot?.textContent).toContain("windows");
+  });
+
+  it("provides a Lovelace GUI editor element", () => {
+    const editor = ScheduledDeparturesCard.getConfigElement();
+
+    expect(editor.tagName.toLowerCase()).toBe("scheduled-departures-card-editor");
   });
 });
