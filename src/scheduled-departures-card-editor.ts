@@ -206,142 +206,113 @@ export class ScheduledDeparturesCardEditor extends LitElement {
 
     return html`
       <div class="editor">
-        <!-- Shared YAML section -->
-        <div class="yaml-section">
-          <div class="yaml-label">Shared departures-card config</div>
+        <label>
+          Shared departures-card YAML
           <textarea
             aria-label="departuresCard YAML"
-            rows="10"
+            rows="12"
             .value=${stringify(this.config.departuresCard).trimEnd()}
             @change=${(event: Event) =>
               this.updateDeparturesCardYaml((event.target as HTMLTextAreaElement).value)}
           ></textarea>
-          ${this.yamlError
-            ? html`<div class="error-banner" style="margin-top:10px">${this.yamlError}</div>`
-            : nothing}
-        </div>
+        </label>
+        ${this.yamlError ? html`<div class="error">${this.yamlError}</div>` : nothing}
 
-        <!-- Windows toolbar -->
-        <div class="toolbar">
+        <div class="header">
           <h3>Schedule windows</h3>
-          <button type="button" class="btn-primary" @click=${() => this.addWindow()}>
-            + Add window
-          </button>
+          <button type="button" @click=${() => this.addWindow()}>Add window</button>
         </div>
 
-        <!-- Window cards -->
         ${this.config.windows.map(
           (windowConfig, windowIndex) => html`
             <section class="window">
-              <!-- Departure board strip header -->
               <div class="window-toolbar">
                 <div class="window-heading">
                   <span class="eyebrow">Window ${windowIndex + 1}</span>
                   <strong>${windowConfig.title || "Untitled schedule"}</strong>
-                  <span class="window-timerange">
-                    ${windowConfig.from}
-                    <span class="arrow">→</span>
-                    ${windowConfig.to ?? "∞"}
-                  </span>
+                  <small>${windowConfig.from}${windowConfig.to ? ` - ${windowConfig.to}` : " onward"}</small>
                 </div>
                 <span class="actions">
                   <button
                     type="button"
-                    class="btn-ghost"
                     ?disabled=${windowIndex === 0}
                     @click=${() => this.moveWindow(windowIndex, -1)}
-                    title="Move up"
-                  >↑</button>
+                  >
+                    Up
+                  </button>
                   <button
                     type="button"
-                    class="btn-ghost"
                     ?disabled=${windowIndex === this.config!.windows.length - 1}
                     @click=${() => this.moveWindow(windowIndex, 1)}
-                    title="Move down"
-                  >↓</button>
-                  <button
-                    type="button"
-                    class="btn-danger"
-                    @click=${() => this.deleteWindow(windowIndex)}
-                  >Delete</button>
+                  >
+                    Down
+                  </button>
+                  <button type="button" @click=${() => this.deleteWindow(windowIndex)}>
+                    Delete
+                  </button>
                 </span>
               </div>
 
-              <div class="window-body">
-                <!-- Time + title fields -->
-                <div class="grid">
-                  ${this.renderWindowField(windowIndex, "from", "From", windowConfig.from, "time")}
-                  ${this.renderWindowField(windowIndex, "to", "To", windowConfig.to ?? "", "time")}
-                  ${this.renderWindowField(windowIndex, "title", "Title", windowConfig.title)}
-                </div>
-
-                <!-- Day pill toggles -->
-                <div class="days-group">
-                  <div class="days-legend">Active days</div>
-                  <div class="days-pills">
-                    ${DAYS.map((day) => {
-                      const checked = windowConfig.days?.includes(day) ?? false;
-                      const id = `day-${windowIndex}-${day}`;
-                      return html`
-                        <div class="day-pill">
-                          <input
-                            type="checkbox"
-                            id=${id}
-                            .checked=${checked}
-                            @change=${() => this.toggleDay(windowIndex, day)}
-                          />
-                          <label for=${id}>${day}</label>
-                        </div>
-                      `;
-                    })}
-                  </div>
-                </div>
-
-                <hr class="divider" />
-
-                <!-- Entities -->
-                <div class="entities-toolbar">
-                  <h4>Entities</h4>
-                  <button
-                    type="button"
-                    class="btn-ghost"
-                    @click=${() => this.addEntity(windowIndex)}
-                  >+ Add entity</button>
-                </div>
-
-                <div class="entities-section">
-                  ${windowConfig.entities.map(
-                    (entityConfig, entityIndex) => html`
-                      <div class="entity">
-                        <ha-entity-picker
-                          data-field="entity"
-                          label="Entity"
-                          .hass=${this.hass}
-                          .value=${entityConfig.entity}
-                          .allowCustomEntity=${true}
-                          @value-changed=${(event: CustomEvent<{ value?: string }>) =>
-                            this.handleEntityPicked(windowIndex, entityIndex, event.detail.value ?? "")}
-                        ></ha-entity-picker>
-                        ${this.renderLineColorField(windowIndex, entityIndex, entityConfig)}
-                        ${this.renderEntityField(windowIndex, entityIndex, entityConfig, "lineName")}
-                        ${this.renderEntityField(
-                          windowIndex,
-                          entityIndex,
-                          entityConfig,
-                          "destinationName",
-                        )}
-                        ${this.renderDestinationSourceField(windowIndex, entityIndex, entityConfig)}
-                        <button
-                          type="button"
-                          class="btn-danger"
-                          style="min-height:40px"
-                          @click=${() => this.deleteEntity(windowIndex, entityIndex)}
-                        >Remove</button>
-                      </div>
-                    `,
-                  )}
-                </div>
+              <div class="grid">
+                ${this.renderWindowField(windowIndex, "from", "From", windowConfig.from, "time")}
+                ${this.renderWindowField(windowIndex, "to", "To", windowConfig.to ?? "", "time")}
+                ${this.renderWindowField(windowIndex, "title", "Title", windowConfig.title)}
               </div>
+
+              <fieldset class="days">
+                <legend>Days</legend>
+                ${DAYS.map(
+                  (day) => html`
+                    <label class="day">
+                      <input
+                        type="checkbox"
+                        .checked=${windowConfig.days?.includes(day) ?? false}
+                        @change=${() => this.toggleDay(windowIndex, day)}
+                      />
+                      ${day}
+                    </label>
+                  `,
+                )}
+              </fieldset>
+
+              <div class="header">
+                <h4>Entities</h4>
+                <button type="button" @click=${() => this.addEntity(windowIndex)}>
+                  Add entity
+                </button>
+              </div>
+
+              ${windowConfig.entities.map(
+                (entityConfig, entityIndex) => html`
+                  <div class="entity">
+                    <ha-entity-picker
+                      data-field="entity"
+                      label="Entity"
+                      .hass=${this.hass}
+                      .value=${entityConfig.entity}
+                      .allowCustomEntity=${true}
+                      @value-changed=${(event: CustomEvent<{ value?: string }>) =>
+                        this.handleEntityPicked(windowIndex, entityIndex, event.detail.value ?? "")}
+                    ></ha-entity-picker>
+                    ${this.renderLineColorField(windowIndex, entityIndex, entityConfig)}
+                    ${this.renderEntityField(windowIndex, entityIndex, entityConfig, "lineName")}
+                    ${this.renderEntityField(
+                      windowIndex,
+                      entityIndex,
+                      entityConfig,
+                      "destinationName",
+                    )}
+                    ${this.renderDestinationSourceField(windowIndex, entityIndex, entityConfig)}
+                    <button
+                      type="button"
+                      class="delete-entity"
+                      @click=${() => this.deleteEntity(windowIndex, entityIndex)}
+                    >
+                      Delete entity
+                    </button>
+                  </div>
+                `,
+              )}
             </section>
           `,
         )}
@@ -394,18 +365,18 @@ export class ScheduledDeparturesCardEditor extends LitElement {
 
     return html`
       <div class="color-field">
-        <div class="color-wrap">
-          <span class="color-meta">Color</span>
+        <label>
+          <span>Line color</span>
           <input
             type="color"
             .value=${validHexColor(lineColor) ? lineColor : "#000000"}
             @input=${(event: Event) =>
               this.handleEntityFieldChanged(windowIndex, entityIndex, "lineColor", eventValue(event))}
           />
-        </div>
+        </label>
         <ha-textfield
           data-field="lineColor"
-          label="Hex code"
+          label="Hex"
           .value=${lineColor}
           @change=${(event: Event) =>
             this.handleEntityFieldChanged(windowIndex, entityIndex, "lineColor", eventValue(event))}
@@ -460,157 +431,23 @@ export class ScheduledDeparturesCardEditor extends LitElement {
   }
 
   static styles = css`
-    /* ── Transit Board Design System ─────────────────────────────── */
     :host {
       display: block;
-      font-family: 'Inter', 'Helvetica Neue', system-ui, sans-serif;
     }
 
-    /* ── Root editor shell ───────────────────────────────────────── */
     .editor {
       display: grid;
-      gap: 20px;
+      gap: 16px;
     }
 
-    /* ── Section: Shared YAML ────────────────────────────────────── */
-    .yaml-section {
-      background: var(--card-background-color, #1a1d27);
-      border: 1px solid rgba(245, 166, 35, 0.2);
-      border-radius: 10px;
-      padding: 16px;
-      position: relative;
-      overflow: hidden;
+    label {
+      display: grid;
+      gap: 6px;
+      font-weight: 500;
     }
 
-    .yaml-section::before {
-      content: '';
-      position: absolute;
-      inset: 0 auto 0 0;
-      width: 3px;
-      background: #f5a623;
-      border-radius: 10px 0 0 10px;
-    }
-
-    .yaml-label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #f5a623;
-      margin-bottom: 10px;
-    }
-
-    .yaml-label::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: rgba(245, 166, 35, 0.15);
-    }
-
-    textarea {
-      box-sizing: border-box;
-      width: 100%;
-      background: rgba(0, 0, 0, 0.35);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 6px;
-      color: #e8eaf2;
-      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-      font-size: 0.8rem;
-      line-height: 1.6;
-      min-height: 160px;
-      padding: 12px 14px;
-      resize: vertical;
-      transition: border-color 0.15s ease;
-    }
-
-    textarea:focus {
-      border-color: rgba(245, 166, 35, 0.5);
-      outline: none;
-    }
-
-    /* ── Toolbar row (header + action button) ────────────────────── */
-    .toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .section-label {
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--secondary-text-color, #8891a8);
-    }
-
-    h3, h4 {
-      margin: 0;
-      font-size: 0.8rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--secondary-text-color, #8891a8);
-    }
-
-    /* ── Buttons ─────────────────────────────────────────────────── */
-    button {
-      cursor: pointer;
-      font: inherit;
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      border-radius: 6px;
-      padding: 6px 12px;
-      transition: all 0.15s ease;
-      border: 1px solid transparent;
-    }
-
-    .btn-primary {
-      background: #f5a623;
-      border-color: #f5a623;
-      color: #0f1117;
-    }
-
-    .btn-primary:hover {
-      background: #ffc04d;
-      border-color: #ffc04d;
-      box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.2);
-    }
-
-    .btn-ghost {
-      background: transparent;
-      border-color: rgba(255, 255, 255, 0.12);
-      color: var(--secondary-text-color, #8891a8);
-    }
-
-    .btn-ghost:hover:not(:disabled) {
-      border-color: rgba(255, 255, 255, 0.25);
-      color: var(--primary-text-color, #e8eaf2);
-      background: rgba(255, 255, 255, 0.05);
-    }
-
-    .btn-danger {
-      background: transparent;
-      border-color: rgba(220, 53, 69, 0.3);
-      color: #ff6b7a;
-    }
-
-    .btn-danger:hover {
-      background: rgba(220, 53, 69, 0.1);
-      border-color: rgba(220, 53, 69, 0.6);
-    }
-
-    button:disabled {
-      cursor: default;
-      opacity: 0.35;
-    }
-
-    /* ── ha-* component overrides ────────────────────────────────── */
     input,
+    textarea,
     ha-textfield,
     ha-entity-picker,
     ha-select {
@@ -618,256 +455,143 @@ export class ScheduledDeparturesCardEditor extends LitElement {
       width: 100%;
     }
 
-    /* ── Window card ─────────────────────────────────────────────── */
-    .window {
-      background: var(--card-background-color, #1a1d27);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-      border-radius: 12px;
-      display: grid;
-      gap: 16px;
-      padding: 0;
-      overflow: hidden;
-      transition: border-color 0.2s ease;
+    input,
+    textarea {
+      border: 1px solid var(--divider-color, #d0d0d0);
+      border-radius: 4px;
+      background: var(--card-background-color, #fff);
+      color: var(--primary-text-color, #111);
+      font: inherit;
+      padding: 8px;
     }
 
-    .window:hover {
-      border-color: rgba(245, 166, 35, 0.25);
+    textarea {
+      font-family: var(--code-font-family, monospace);
+      min-height: 180px;
     }
 
-    /* Window header "departure board" strip */
+    button {
+      border: 1px solid var(--divider-color, #d0d0d0);
+      border-radius: 4px;
+      background: var(--secondary-background-color, #f4f4f4);
+      color: var(--primary-text-color, #111);
+      cursor: pointer;
+      font: inherit;
+      padding: 6px 10px;
+    }
+
+    button:disabled {
+      cursor: default;
+      opacity: 0.5;
+    }
+
+    .header,
     .window-toolbar {
-      display: flex;
       align-items: center;
+      display: flex;
+      gap: 8px;
       justify-content: space-between;
-      gap: 10px;
-      background: rgba(0, 0, 0, 0.3);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      padding: 12px 16px;
     }
 
     .window-heading {
-      display: flex;
-      flex-direction: column;
+      display: grid;
       gap: 2px;
-      min-width: 0;
-    }
-
-    .eyebrow {
-      font-size: 0.65rem;
-      font-weight: 700;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: #f5a623;
-      opacity: 0.7;
     }
 
     .window-heading strong {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--primary-text-color, #e8eaf2);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      font-size: 1rem;
     }
 
-    .window-timerange {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-family: 'JetBrains Mono', 'Fira Code', monospace;
-      font-size: 0.72rem;
-      color: rgba(245, 166, 35, 0.8);
-      background: rgba(245, 166, 35, 0.08);
-      border: 1px solid rgba(245, 166, 35, 0.15);
-      border-radius: 4px;
-      padding: 2px 7px;
-      margin-top: 2px;
-      width: fit-content;
+    .window-heading small,
+    .eyebrow {
+      color: var(--secondary-text-color, #666);
     }
 
-    .window-timerange .arrow {
-      opacity: 0.5;
+    .eyebrow {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
     }
 
     .actions {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
-      align-items: center;
       justify-content: flex-end;
-      flex-shrink: 0;
     }
 
-    /* Window body */
-    .window-body {
+    h3,
+    h4 {
+      margin: 0;
+    }
+
+    .window {
+      border: 1px solid var(--divider-color, #d0d0d0);
+      border-radius: 8px;
       display: grid;
-      gap: 16px;
-      padding: 16px;
+      gap: 12px;
+      padding: 12px;
     }
 
-    /* ── Field grid ──────────────────────────────────────────────── */
-    .grid {
-      display: grid;
-      gap: 10px;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    }
-
-    /* ── Day toggles ─────────────────────────────────────────────── */
-    .days-group {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .days-legend {
-      font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--secondary-text-color, #8891a8);
-    }
-
-    .days-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    .day-pill {
-      position: relative;
-    }
-
-    .day-pill input[type="checkbox"] {
-      position: absolute;
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .day-pill label {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 38px;
-      height: 28px;
-      border-radius: 5px;
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(255, 255, 255, 0.04);
-      color: var(--secondary-text-color, #8891a8);
-      user-select: none;
-    }
-
-    .day-pill input:checked + label {
-      background: #f5a623;
-      border-color: #f5a623;
-      color: #0f1117;
-      box-shadow: 0 0 8px rgba(245, 166, 35, 0.35);
-    }
-
-    .day-pill label:hover {
-      border-color: rgba(245, 166, 35, 0.4);
-      color: #f5a623;
-    }
-
-    /* ── Entity row ──────────────────────────────────────────────── */
-    .entities-section {
-      display: grid;
-      gap: 10px;
-    }
-
+    .grid,
     .entity {
       display: grid;
       gap: 10px;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
+
+    .entity {
       align-items: end;
-      background: rgba(0, 0, 0, 0.2);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-left: 3px solid rgba(245, 166, 35, 0.3);
-      border-radius: 8px;
-      padding: 12px;
-      transition: border-left-color 0.2s ease;
+      border: 1px solid var(--divider-color, #d0d0d0);
+      border-radius: 6px;
+      padding: 10px;
     }
 
-    .entity:hover {
-      border-left-color: #f5a623;
-    }
-
-    /* ── Color swatch + hex field ─────────────────────────────────── */
     .color-field {
-      display: grid;
-      gap: 6px;
-      grid-template-columns: 40px minmax(80px, 1fr);
       align-items: end;
+      display: grid;
+      gap: 8px;
+      grid-template-columns: 52px minmax(100px, 1fr);
     }
 
-    .color-field .color-wrap {
-      display: flex;
-      flex-direction: column;
+    .color-field label {
       gap: 4px;
     }
 
-    .color-field .color-meta {
-      font-size: 0.65rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--secondary-text-color, #8891a8);
+    .color-field span {
+      color: var(--secondary-text-color, #666);
+      font-size: 0.75rem;
     }
 
     input[type="color"] {
-      width: 40px;
       height: 40px;
       padding: 2px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .delete-entity {
+      min-height: 40px;
+    }
+
+    fieldset {
+      border: 1px solid var(--divider-color, #d0d0d0);
       border-radius: 6px;
-      background: rgba(0, 0, 0, 0.3);
-      cursor: pointer;
+      margin: 0;
+      padding: 10px;
     }
 
-    /* ── Error states ────────────────────────────────────────────── */
-    .error-banner {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      background: rgba(220, 53, 69, 0.08);
-      border: 1px solid rgba(220, 53, 69, 0.3);
-      border-radius: 8px;
-      padding: 10px 12px;
-      font-size: 0.8rem;
-      color: #ff6b7a;
+    .day {
+      display: inline-flex;
+      gap: 4px;
+      margin: 4px 10px 4px 0;
     }
 
-    .error-banner::before {
-      content: '⚠';
-      flex-shrink: 0;
-      font-size: 0.9rem;
+    .day input {
+      width: auto;
     }
 
     .error {
-      color: #ff6b7a;
-      font-size: 0.78rem;
-    }
-
-    /* ── Divider ─────────────────────────────────────────────────── */
-    .divider {
-      height: 1px;
-      background: rgba(255, 255, 255, 0.06);
-      margin: 0;
-      border: none;
-    }
-
-    /* ── Entity sub-header ───────────────────────────────────────── */
-    .entities-toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
+      color: var(--error-color, #db4437);
     }
   `;
 }
